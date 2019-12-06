@@ -1,0 +1,7 @@
+{
+    "python.jediEnabled": true,
+	"files.exclude": {
+        "**/*.bak": true,
+        "**/*.pyc": true
+    }
+}
