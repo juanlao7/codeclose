@@ -1,7 +1,8 @@
 import os
 import textwrap
 import inspect
-from shutil import copyfile, rmtree
+import importlib
+from shutil import rmtree
 from base64 import b64encode, b32encode, b32decode
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import AES
@@ -10,24 +11,32 @@ from Cryptodome.Random import get_random_bytes
 from Cryptodome.Util.number import bytes_to_long, long_to_bytes
 
 from .crypto import generateRSAKey, adaptForAES
-from . import protection
+from .errors import InvalidProductKey
 
-AES_POSSIBLE_SIZES = [128, 192, 256]
+__AES_POSSIBLE_SIZES__ = [128, 192, 256]
 
-PROTECTED_SOURCE_TEMPLATE = """from {root}__codeclose__.protection import expose
+__PROTECTED_SOURCE_TEMPLATE__ = """from codeclose.protection import expose
 exec(expose({encryptedContent}, {initializationVector}, {originalLength}))"""
+
+# module -> encrypt
+__INJECTED_CODECLOSE_MODULES__ = {
+    'protection': False,
+    'errors': False,
+    'validation': True
+}
 
 def generateSigningKeys(size=120, publicExponent=65537):
     key = generateRSAKey(size, e=publicExponent)
     return key.export_key('PEM'), key.publickey().export_key('PEM')
 
 def generateEncryptingKey(size=256):
-    if size not in AES_POSSIBLE_SIZES:
-        raise ValueError('Only possible key sizes are %s.' % ', '.join(AES_POSSIBLE_SIZES))
+    if size not in __AES_POSSIBLE_SIZES__:
+        raise ValueError('Only possible key sizes are %s.' % ', '.join(__AES_POSSIBLE_SIZES__))
 
     return get_random_bytes(size // 8)
 
-def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths, followSymlinks=False):
+def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths, encryptionExcludedFilePaths=[], followSymlinks=False):
+    encryptionExcludedFilePaths = {os.path.abspath(x) for x in encryptionExcludedFilePaths}
     rmtree(destinationDirectoryPath)
 
     while os.path.exists(destinationDirectoryPath):
@@ -35,46 +44,31 @@ def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths, follo
     
     os.makedirs(destinationDirectoryPath, exist_ok=True)
     currentPath = os.getcwd()
-    protectionCode = inspect.getsource(protection)
+    injectionContent = __getInjectionContent__(encryptingKey, '')
 
     for srcPath in sourceDirectoryPaths:
         destPath = os.path.abspath(os.path.join(destinationDirectoryPath, os.path.basename(os.path.abspath(srcPath))))
-        os.makedirs(os.path.join(destPath, '__codeclose__'))
-
-        with open(os.path.join(destPath, '__codeclose__', '__init__.py'), 'w') as handler:
-            handler.write(' ')
-        
-        with open(os.path.join(destPath, '__codeclose__', 'protection.py'), 'w') as handler:
-            handler.write(protectionCode)
-
+        __injectContent__(injectionContent, destPath)
         os.chdir(srcPath)
 
         for root, _, fileNames in os.walk('.', followlinks=followSymlinks):
+            codecloseModuleName = '.' * len(root.split(os.sep)) + '__codeclose__'
+
             for fileName in fileNames:
                 if fileName.endswith('.py'):
                     srcFilePath = os.path.join(root, fileName)
                     destFilePath = os.path.join(destPath, srcFilePath)
                     os.makedirs(os.path.dirname(destFilePath), exist_ok=True)
-                    copyfile(srcFilePath, destFilePath)     # TODO: obfuscate
 
-                    with open(destFilePath, 'rb') as readHandler:
-                        content = readHandler.read()
+                    with open(srcFilePath, 'r') as handler:
+                        content = handler.read()
+                        content = __remapModules__(content, codecloseModuleName)
 
-                        if content:
-                            readHandler.close()
-                            initializationVector = get_random_bytes(16)
-                            cipher = AES.new(encryptingKey, AES.MODE_CBC, iv=initializationVector)
-                            encryptedContent = cipher.encrypt(adaptForAES(content))
+                        if all(not os.path.samefile(srcFilePath, excludedFilePath) for excludedFilePath in encryptionExcludedFilePaths):
+                            content = __encrypt__(content, encryptingKey, codecloseModuleName)
 
-                            protectedSource = PROTECTED_SOURCE_TEMPLATE.format(
-                                root='.' * len(root.split(os.sep)),
-                                encryptedContent="'%s'" % b64encode(encryptedContent).decode('utf-8'),
-                                initializationVector="'%s'" % b64encode(initializationVector).decode('utf-8'),
-                                originalLength=len(content)
-                            )
-
-                            with open(destFilePath, 'w') as writeHandler:
-                                writeHandler.write(protectedSource)
+                    with open(destFilePath, 'w') as handler:
+                        handler.write(content)
             
         os.chdir(currentPath)
 
@@ -130,5 +124,47 @@ def readProductKey(verifyingPublicKey, productKey, licenseIdSize=24, productIdSi
 
     return licenseId, productId, expirationTime
 
-class InvalidProductKey(Exception):
-    pass
+def __getInjectionContent__(encryptingKey, codecloseModuleName):
+    injectionContent = {os.path.join('__codeclose__', '__init__.py'): ' '}
+
+    for injectedModuleName in __INJECTED_CODECLOSE_MODULES__:
+        injectedFilePath = os.path.join('__codeclose__', '%s.py' % injectedModuleName)
+        injectedModule = importlib.import_module('codeclose.%s' % injectedModuleName)
+        injectionContent[injectedFilePath] = inspect.getsource(injectedModule)
+
+        if __INJECTED_CODECLOSE_MODULES__[injectedModuleName]:
+            injectionContent[injectedFilePath] = __encrypt__(injectionContent[injectedFilePath], encryptingKey, codecloseModuleName)
+    
+    return injectionContent
+
+def __injectContent__(injectionContent, destPath):
+    for injectedFilePath in injectionContent:
+        destInjectedFilePath = os.path.join(destPath, injectedFilePath)
+        os.makedirs(os.path.dirname(destInjectedFilePath), exist_ok=True)
+
+        with open(destInjectedFilePath, 'w') as handler:
+            handler.write(injectionContent[injectedFilePath])
+
+def __remapModules__(content, codecloseModuleName):
+    # TODO: use abstract syntax trees.
+    
+    for injectedModule in __INJECTED_CODECLOSE_MODULES__:
+        content = content.replace('codeclose.%s' % injectedModule, '%s.%s' % (codecloseModuleName, injectedModule))
+    
+    return content
+
+def __encrypt__(content, encryptingKey, codecloseModuleName):
+    if not content:
+        return content
+    
+    initializationVector = get_random_bytes(16)
+    cipher = AES.new(encryptingKey, AES.MODE_CBC, iv=initializationVector)
+    encryptedContent = cipher.encrypt(adaptForAES(content.encode('utf-8')))
+
+    content = __PROTECTED_SOURCE_TEMPLATE__.format(
+        encryptedContent="'%s'" % b64encode(encryptedContent).decode('utf-8'),
+        initializationVector="'%s'" % b64encode(initializationVector).decode('utf-8'),
+        originalLength=len(content)
+    )
+
+    return __remapModules__(content, codecloseModuleName)

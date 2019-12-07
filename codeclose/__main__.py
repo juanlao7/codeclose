@@ -4,7 +4,8 @@ import os
 import sys
 from Cryptodome import Random
 
-from . import generateSigningKeys, generateEncryptingKey, protect, createProductKey, readProductKey, InvalidProductKey
+from . import generateSigningKeys, generateEncryptingKey, protect, createProductKey, readProductKey
+from .errors import InvalidProductKey
 
 def ReadableDirectory(value):
     if not os.path.isdir(value):
@@ -79,12 +80,13 @@ class Commands(object):
     def protect(cls):
         def preparer(parser):
             def handler(args):
-                protect(args.key_path.read(), args.dest_directory, args.src_directories, args.follow_symlinks)
+                protect(args.key_path.read(), args.dest_directory, args.src, args.encryption_excluded, args.follow_symlinks)
                 
+            parser.add_argument('--src', '-s', action='append', type=ReadableDirectory, help='Source directory path. All **/*.py files from this directory will be processed.', metavar='SOURCE_DIR')
+            parser.add_argument('--encryption-excluded', '-e', action='append', help='Disable encryption for a specific file, to be able to run it without a valid product key.', metavar='FILE_PATH')
             parser.add_argument('--follow-symlinks', action='store_true', help='Follow symbolic links.')
             parser.add_argument('key_path', type=argparse.FileType('rb'), help='File containing the AES key for encrypting source code.')
             parser.add_argument('dest_directory', type=WritableDirectory, help='Directory path where all processed files will be stored.')
-            parser.add_argument('src_directories', nargs='+', type=ReadableDirectory, help='Source directory paths. All **/*.py files from these directories will be processed.')
             return handler
         
         return 'Obfuscates and encrypts source code.', preparer
