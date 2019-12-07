@@ -1,5 +1,6 @@
 import os
 import textwrap
+import inspect
 from shutil import copyfile, rmtree
 from base64 import b64encode, b32encode, b32decode
 from Cryptodome.PublicKey import RSA
@@ -8,7 +9,8 @@ from Cryptodome.Hash import SHAKE256
 from Cryptodome.Random import get_random_bytes
 from Cryptodome.Util.number import bytes_to_long, long_to_bytes
 
-from .tools import generateRSAKey, adaptForAES, bitStringToBytes
+from .crypto import generateRSAKey, adaptForAES
+from . import protection
 
 AES_POSSIBLE_SIZES = [128, 192, 256]
 
@@ -33,9 +35,18 @@ def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths, follo
     
     os.makedirs(destinationDirectoryPath, exist_ok=True)
     currentPath = os.getcwd()
+    protectionCode = inspect.getsource(protection)
 
     for srcPath in sourceDirectoryPaths:
         destPath = os.path.abspath(os.path.join(destinationDirectoryPath, os.path.basename(os.path.abspath(srcPath))))
+        os.makedirs(os.path.join(destPath, '__codeclose__'))
+
+        with open(os.path.join(destPath, '__codeclose__', '__init__.py'), 'w') as handler:
+            handler.write(' ')
+        
+        with open(os.path.join(destPath, '__codeclose__', 'protection.py'), 'w') as handler:
+            handler.write(protectionCode)
+
         os.chdir(srcPath)
 
         for root, _, fileNames in os.walk('.', followlinks=followSymlinks):

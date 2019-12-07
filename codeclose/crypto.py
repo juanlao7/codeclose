@@ -1,5 +1,3 @@
-import os
-import argparse
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Math.Numbers import Integer
 from Cryptodome.Math.Primality import test_probable_prime
@@ -7,57 +5,7 @@ from Cryptodome import Random
 
 COMPOSITE = 0
 
-def ReadableDirectory(value):
-    if not os.path.isdir(value):
-        raise argparse.ArgumentTypeError('"%s" is not a directory.' % value)
-    
-    if not os.access(value, os.R_OK):
-        raise argparse.ArgumentTypeError('"%s" directory is not readable.' % value)
-    
-    return value
-
-def WritableDirectory(value):
-    if not os.path.exists(value):
-        os.makedirs(value, exist_ok=True)
-    
-    if not os.path.isdir(value):
-        raise argparse.ArgumentTypeError('"%s" is not a directory.' % value)
-    
-    if not os.access(value, os.W_OK):
-        raise argparse.ArgumentTypeError('"%s" directory is not writable.' % value)
-    
-    return value
-
-def UnsignedInt(value):
-    value = int(value)
-
-    if value <= 0:
-        raise argparse.ArgumentTypeError('Invalid unsigned integer "%s".' % value)
-    
-    return value
-
-def toHyphenSeparated(value):
-    result = value[0].lower()
-
-    for i in range(1, len(value)):
-        if value[i].isupper():
-            result += '-%s' % value[i].lower()
-        else:
-            result += value[i]
-
-    return result
-
-def bitStringToBytes(bitString):
-    asInteger = int(bitString, 2)
-    byteArray = bytearray()
-
-    while asInteger:
-        byteArray.append(asInteger & 0xff)
-        asInteger >>= 8
-
-    return bytes(byteArray[::-1])
-
-def generate_probable_prime(**kwargs):
+def generateProbablePrime(**kwargs):
     """Modified version of pycryptodome's Cryptodome.Math.Primality.generate_probable_prime to create primes of any size."""
 
     exact_bits = kwargs.pop("exact_bits", None)
@@ -107,7 +55,7 @@ def generateRSAKey(bits, randfunc=None, e=65537):
         def filter_p(candidate):
             return candidate > min_p and (candidate - 1).gcd(e) == 1
 
-        p = generate_probable_prime(exact_bits=size_p,
+        p = generateProbablePrime(exact_bits=size_p,
                                     randfunc=randfunc,
                                     prime_filter=filter_p)
 
@@ -118,7 +66,7 @@ def generateRSAKey(bits, randfunc=None, e=65537):
                     (candidate - 1).gcd(e) == 1 and
                     abs(candidate - p) > min_distance)
 
-        q = generate_probable_prime(exact_bits=size_q,
+        q = generateProbablePrime(exact_bits=size_q,
                                     randfunc=randfunc,
                                     prime_filter=filter_q)
 

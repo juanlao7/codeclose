@@ -15,7 +15,7 @@ def getLicense():
     if __LICENSE__ is None:
         __LICENSE__ = {}
 
-        with open('C:\\projects\\protopipe\\engine\\codeclose_keys\\source_code.key', 'rb') as handler:
+        with open('C:\\projects\\protopipe\\engine\\codeclose_keys\\code_encrypting.key', 'rb') as handler:
             __LICENSE__['codeCipherKey'] = handler.read()
 
     return __LICENSE__

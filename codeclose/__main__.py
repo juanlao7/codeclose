@@ -5,7 +5,46 @@ import sys
 from Cryptodome import Random
 
 from . import generateSigningKeys, generateEncryptingKey, protect, createProductKey, readProductKey, InvalidProductKey
-from .tools import toHyphenSeparated, ReadableDirectory, WritableDirectory, UnsignedInt
+
+def ReadableDirectory(value):
+    if not os.path.isdir(value):
+        raise argparse.ArgumentTypeError('"%s" is not a directory.' % value)
+    
+    if not os.access(value, os.R_OK):
+        raise argparse.ArgumentTypeError('"%s" directory is not readable.' % value)
+    
+    return value
+
+def WritableDirectory(value):
+    if not os.path.exists(value):
+        os.makedirs(value, exist_ok=True)
+    
+    if not os.path.isdir(value):
+        raise argparse.ArgumentTypeError('"%s" is not a directory.' % value)
+    
+    if not os.access(value, os.W_OK):
+        raise argparse.ArgumentTypeError('"%s" directory is not writable.' % value)
+    
+    return value
+
+def UnsignedInt(value):
+    value = int(value)
+
+    if value <= 0:
+        raise argparse.ArgumentTypeError('Invalid unsigned integer "%s".' % value)
+    
+    return value
+
+def toHyphenSeparated(value):
+    result = value[0].lower()
+
+    for i in range(1, len(value)):
+        if value[i].isupper():
+            result += '-%s' % value[i].lower()
+        else:
+            result += value[i]
+
+    return result
 
 class Commands(object):
     @classmethod
