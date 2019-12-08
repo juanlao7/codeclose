@@ -13,9 +13,7 @@ from Cryptodome.Util.number import bytes_to_long, long_to_bytes
 from Cryptodome.Math.Numbers import Integer
 from Cryptodome.Math.Primality import test_probable_prime
 
-from .runtime import readProductKey as readProductKeyImpl
-from .errors import InvalidProductKey
-
+from .runtime import readProductKey as __readProductKeyImpl, computeLicense as __computeLicenseImpl
 from .runtime import DEFAULT_LICENSE_ID_SIZE, DEFAULT_PRODUCT_ID_SIZE, DEFAULT_EXPIRATION_TIME_SIZE, DEFAULT_HASH_SIZE
 
 DEFAULT_RSA_KEY_SIZE = 120
@@ -110,31 +108,21 @@ def createProductKey(signingPrivateKey, licenseId, productId, expirationTime, gr
 
 def readProductKey(verifyingPublicKey, productKey, licenseIdSize=DEFAULT_LICENSE_ID_SIZE, productIdSize=DEFAULT_PRODUCT_ID_SIZE, expirationTimeSize=DEFAULT_EXPIRATION_TIME_SIZE, hashSize=DEFAULT_HASH_SIZE):
     verifyingPublicKeyInstance = RSA.import_key(verifyingPublicKey)
-    return readProductKeyImpl(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, productKey)
+    return __readProductKeyImpl(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, productKey)
 
-def configureResponseComputation(verifyingPublicKey, encryptingKey, expectedProductIds, licenseIdSize=DEFAULT_LICENSE_ID_SIZE, productIdSize=DEFAULT_PRODUCT_ID_SIZE, expirationTimeSize=DEFAULT_EXPIRATION_TIME_SIZE, hashSize=DEFAULT_HASH_SIZE):
+def configureLicenseComputation(verifyingPublicKey, encryptingKey, expectedProductIds, licenseIdSize=DEFAULT_LICENSE_ID_SIZE, productIdSize=DEFAULT_PRODUCT_ID_SIZE, expirationTimeSize=DEFAULT_EXPIRATION_TIME_SIZE, hashSize=DEFAULT_HASH_SIZE):
     return {
         'verifyingPublicKeyInstance': RSA.import_key(verifyingPublicKey),
-        'encryptingKeyString': b64encode(encryptingKey).decode('utf-8'),
-        'expectedProductIds': expectedProductIds,
         'licenseIdSize': licenseIdSize,
         'productIdSize': productIdSize,
         'expirationTimeSize': expirationTimeSize,
-        'hashSize': hashSize
+        'hashSize': hashSize,
+        'expectedProductIds': expectedProductIds,
+        'encryptingKeyString': b64encode(encryptingKey).decode('utf-8')
     }
 
-def computeResponse(configuration, productKey):
-    _, productId, expirationTime = readProductKeyImpl(configuration.verifyingPublicKeyInstance, configuration.licenseIdSize, configuration.productIdSize, configuration.expirationTimeSize, configuration.hashSize, productKey)
-
-    response = {
-        ''
-    }
-
-    if productId not in expectedProductIds:
-        raise InvalidProductId
-
-    if int(time.time()) > expirationTime:
-        raise ExpiredLicense
+def computeLicense(configuration, productKey):
+    return __computeLicenseImpl(configuration['verifyingPublicKeyInstance'], configuration['licenseIdSize'], configuration['productIdSize'], configuration['expirationTimeSize'], configuration['hashSize'], configuration['expectedProductIds'], configuration['encryptingKeyString'], productKey)
 
 def __getInjectionContent__(encryptingKey, codecloseModuleName):
     injectionContent = {os.path.join('__codeclose__', '__init__.py'): ' '}
