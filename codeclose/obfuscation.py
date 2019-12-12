@@ -107,21 +107,36 @@ class Obfuscator(ast.NodeTransformer):
             if name.startswith('__') and name.endswith('__'):
                 continue
 
-            if self.mode == MODE_NORMAL:
-                dictionary[name] = self._randomName()
-            elif self.mode == MODE_LIGHT:
-                dictionary[name] = '%s_%s' % (name, random.randint(9999, 99999))
+            dictionary[name] = self._randomName(name)
         
         return dictionary
     
-    def _randomName(self):
-        name = '_'.join([random.choice(KEYWORDS).replace('_', '') for i in range(self.randomNameParts)])
+    def _randomName(self, name):
+        if self.mode == MODE_LIGHT:
+            obfuscatedName = '%s_%s' % (name, random.randint(9999, 99999))
+        else:
+            obfuscatedName = '_'.join([random.choice(KEYWORDS).replace('_', '') for i in range(self.randomNameParts)])
         
-        if name in self.usedNames:
-            return self._randomName()
+        numberOfInitialUnderscores = max(0, self._countInitialUnderscores(name) - self._countInitialUnderscores(obfuscatedName))
+        numberOfFinalUnderscores = max(0, self._countInitialUnderscores(name[::-1]) - self._countInitialUnderscores(obfuscatedName[::-1]))
+        obfuscatedName = '_' * numberOfInitialUnderscores + obfuscatedName + '_' * numberOfFinalUnderscores
         
-        self.usedNames.add(name)
-        return name
+        if obfuscatedName in self.usedNames:
+            return self._randomName(name)
+        
+        self.usedNames.add(obfuscatedName)
+        return obfuscatedName
+    
+    def _countInitialUnderscores(self, value):
+        numberOfInitialUnderscores = 0
+
+        for character in value:
+            if character != '_':
+                break
+
+            numberOfInitialUnderscores += 1
+        
+        return numberOfInitialUnderscores
     
     def visit_Name(self, node):
         self.generic_visit(node)
@@ -235,7 +250,7 @@ class Obfuscator(ast.NodeTransformer):
 
         if node.name is None:
             if node.type is not None:
-                node.name = self._randomName()
+                node.name = self._randomName(node.name)
         elif node.name in self.identifiersDictionary:
             node.name = self.identifiersDictionary[node.name]
         
