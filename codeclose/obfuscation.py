@@ -116,7 +116,7 @@ class Obfuscator(ast.NodeTransformer):
             obfuscatedName = '%s_%s' % (name, random.randint(9999, 99999))
         else:
             obfuscatedName = '_'.join([random.choice(KEYWORDS).replace('_', '') for i in range(self.randomNameParts)])
-        
+
         numberOfInitialUnderscores = max(0, self._countInitialUnderscores(name) - self._countInitialUnderscores(obfuscatedName))
         numberOfFinalUnderscores = max(0, self._countInitialUnderscores(name[::-1]) - self._countInitialUnderscores(obfuscatedName[::-1]))
         obfuscatedName = '_' * numberOfInitialUnderscores + obfuscatedName + '_' * numberOfFinalUnderscores
@@ -250,7 +250,7 @@ class Obfuscator(ast.NodeTransformer):
 
         if node.name is None:
             if node.type is not None:
-                node.name = self._randomName(node.name)
+                node.name = self._randomName('anonymousException')
         elif node.name in self.identifiersDictionary:
             node.name = self.identifiersDictionary[node.name]
         
