@@ -13,48 +13,68 @@ from Cryptodome.Util.number import bytes_to_long, long_to_bytes
 from Cryptodome.Math.Numbers import Integer
 from Cryptodome.Math.Primality import test_probable_prime
 
-from .runtime import readProductKey as __readProductKeyImpl, computeLicense as __computeLicenseImpl
+from .obfuscation import Analyzer as _Analyzer, Obfuscator as _Obfuscator, MODE_NORMAL as _MODE_NORMAL
+from .runtime import readProductKey as _readProductKeyImpl, computeLicense as _computeLicenseImpl
 from .runtime import DEFAULT_LICENSE_ID_SIZE, DEFAULT_PRODUCT_ID_SIZE, DEFAULT_EXPIRATION_TIME_SIZE, DEFAULT_HASH_SIZE
 
 DEFAULT_RSA_KEY_SIZE = 120
 DEFAULT_RSA_PUBLIC_EXPONENT = 65537
 DEFAULT_AES_KEY_SIZE = 256
 
-__AES_POSSIBLE_SIZES__ = [128, 192, 256]
+_AES_POSSIBLE_SIZES = [128, 192, 256]
 
-__PROTECTED_SOURCE_TEMPLATE__ = """from codeclose.runtime import expose
-exec(expose({encryptedContent}, {initializationVector}, {originalLength}))"""
+_PROTECTED_SOURCE_TEMPLATE = """from codeclose.runtime import expose
+exec(expose({encryptedContent}, {initializationVector}, {originalSize}))"""
 
-__INJECTED_CODECLOSE_MODULES__ = ['runtime', 'errors']
+_INJECTED_CODECLOSE_MODULES = ['runtime', 'errors']
 
 def generateSigningKeys(size=DEFAULT_RSA_KEY_SIZE, publicExponent=DEFAULT_RSA_PUBLIC_EXPONENT):
-    key = __generateRSAKey__(size, e=publicExponent)
+    key = _generateRSAKey(size, e=publicExponent)
     return key.export_key('PEM'), key.publickey().export_key('PEM')
 
 def generateEncryptingKey(size=DEFAULT_AES_KEY_SIZE):
-    if size not in __AES_POSSIBLE_SIZES__:
-        raise ValueError('Only possible key sizes are %s.' % ', '.join(__AES_POSSIBLE_SIZES__))
+    if size not in _AES_POSSIBLE_SIZES:
+        raise ValueError('Only possible key sizes are %s.' % ', '.join(_AES_POSSIBLE_SIZES))
 
     return Random.get_random_bytes(size // 8)
 
-def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths, encryptionExcludedFilePaths=[], followSymlinks=False):
+def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], encryptionExcludedFilePaths=[], keepIdentifiers=[], keepAttributes=[], obfuscationMode=_MODE_NORMAL, disableEncryption=False, followSymlinks=False):
     encryptionExcludedFilePaths = {os.path.abspath(x) for x in encryptionExcludedFilePaths}
     rmtree(destinationDirectoryPath)
 
     while os.path.exists(destinationDirectoryPath):
         pass
     
+    injectionContent = _getInjectionContent()
+
+    # Analyzing the code (for obfuscation).
+    analyzer = _Analyzer()
+
+    for srcPath in sourceDirectoryPaths:
+        for root, _, fileNames in os.walk(srcPath, followlinks=followSymlinks):
+            for fileName in fileNames:
+                if fileName.endswith('.py'):
+                    srcFilePath = os.path.join(root, fileName)
+                    
+                    with open(srcFilePath, 'r', encoding='utf-8') as handler:
+                        content = handler.read()
+                        analyzer.analyze(content)
+    
+    for injectedFilePath in injectionContent:
+        analyzer.analyze(injectionContent[injectedFilePath])
+
+    # Protecting the code.
     os.makedirs(destinationDirectoryPath, exist_ok=True)
     currentPath = os.getcwd()
-    injectionContent = __getInjectionContent__(encryptingKey, '')
+    obfuscator = _Obfuscator(analyzer, keepIdentifiers, keepAttributes, obfuscationMode)
 
     for srcPath in sourceDirectoryPaths:
         destPath = os.path.abspath(os.path.join(destinationDirectoryPath, os.path.basename(os.path.abspath(srcPath))))
-        __injectContent__(injectionContent, destPath)
+        _injectContent(injectionContent, destPath, obfuscator)
         os.chdir(srcPath)
 
         for root, _, fileNames in os.walk('.', followlinks=followSymlinks):
-            codecloseModuleName = '.' * len(root.split(os.sep)) + '__codeclose__'
+            codecloseModuleName = '.' * len(root.split(os.sep)) + '_codeclose'
 
             for fileName in fileNames:
                 if fileName.endswith('.py'):
@@ -62,14 +82,15 @@ def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths, encry
                     destFilePath = os.path.join(destPath, srcFilePath)
                     os.makedirs(os.path.dirname(destFilePath), exist_ok=True)
 
-                    with open(srcFilePath, 'r') as handler:
+                    with open(srcFilePath, 'r', encoding='utf-8') as handler:
                         content = handler.read()
-                        content = __remapModules__(content, codecloseModuleName)
+                        content = _remapModules(content, codecloseModuleName)
+                        content = obfuscator.obfuscate(content)
 
-                        if all(not os.path.samefile(srcFilePath, excludedFilePath) for excludedFilePath in encryptionExcludedFilePaths):
-                            content = __encrypt__(content, encryptingKey, codecloseModuleName)
+                        if not disableEncryption and all(not os.path.samefile(srcFilePath, excludedFilePath) for excludedFilePath in encryptionExcludedFilePaths):
+                            content = _encrypt(content, encryptingKey, codecloseModuleName)
 
-                    with open(destFilePath, 'w') as handler:
+                    with open(destFilePath, 'w', encoding='utf-8') as handler:
                         handler.write(content)
             
         os.chdir(currentPath)
@@ -108,7 +129,7 @@ def createProductKey(signingPrivateKey, licenseId, productId, expirationTime, gr
 
 def readProductKey(verifyingPublicKey, productKey, licenseIdSize=DEFAULT_LICENSE_ID_SIZE, productIdSize=DEFAULT_PRODUCT_ID_SIZE, expirationTimeSize=DEFAULT_EXPIRATION_TIME_SIZE, hashSize=DEFAULT_HASH_SIZE):
     verifyingPublicKeyInstance = RSA.import_key(verifyingPublicKey)
-    return __readProductKeyImpl(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, productKey)
+    return _readProductKeyImpl(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, productKey)
 
 def configureLicenseComputation(verifyingPublicKey, encryptingKey, expectedProductIds, licenseIdSize=DEFAULT_LICENSE_ID_SIZE, productIdSize=DEFAULT_PRODUCT_ID_SIZE, expirationTimeSize=DEFAULT_EXPIRATION_TIME_SIZE, hashSize=DEFAULT_HASH_SIZE):
     return {
@@ -122,51 +143,53 @@ def configureLicenseComputation(verifyingPublicKey, encryptingKey, expectedProdu
     }
 
 def computeLicense(configuration, productKey):
-    return __computeLicenseImpl(configuration['verifyingPublicKeyInstance'], configuration['licenseIdSize'], configuration['productIdSize'], configuration['expirationTimeSize'], configuration['hashSize'], configuration['expectedProductIds'], configuration['encryptingKeyString'], productKey)
+    return _computeLicenseImpl(configuration['verifyingPublicKeyInstance'], configuration['licenseIdSize'], configuration['productIdSize'], configuration['expirationTimeSize'], configuration['hashSize'], configuration['expectedProductIds'], configuration['encryptingKeyString'], productKey)
 
-def __getInjectionContent__(encryptingKey, codecloseModuleName):
-    injectionContent = {os.path.join('__codeclose__', '__init__.py'): ' '}
+def _getInjectionContent():
+    injectionContent = {os.path.join('_codeclose', '__init__.py'): ' '}
 
-    for injectedModuleName in __INJECTED_CODECLOSE_MODULES__:
-        injectedFilePath = os.path.join('__codeclose__', '%s.py' % injectedModuleName)
+    for injectedModuleName in _INJECTED_CODECLOSE_MODULES:
+        injectedFilePath = os.path.join('_codeclose', '%s.py' % injectedModuleName)
         injectedModule = importlib.import_module('codeclose.%s' % injectedModuleName)
         injectionContent[injectedFilePath] = inspect.getsource(injectedModule)
 
     return injectionContent
 
-def __injectContent__(injectionContent, destPath):
+def _injectContent(injectionContent, destPath, obfuscator):
     for injectedFilePath in injectionContent:
         destInjectedFilePath = os.path.join(destPath, injectedFilePath)
         os.makedirs(os.path.dirname(destInjectedFilePath), exist_ok=True)
 
         with open(destInjectedFilePath, 'w') as handler:
-            handler.write(injectionContent[injectedFilePath])
+            content = obfuscator.obfuscate(injectionContent[injectedFilePath])
+            handler.write(content)
 
-def __remapModules__(content, codecloseModuleName):
+def _remapModules(content, codecloseModuleName):
     # TODO: use abstract syntax trees.
     
-    for injectedModule in __INJECTED_CODECLOSE_MODULES__:
+    for injectedModule in _INJECTED_CODECLOSE_MODULES:
         content = content.replace('codeclose.%s' % injectedModule, '%s.%s' % (codecloseModuleName, injectedModule))
     
     return content
 
-def __encrypt__(content, encryptingKey, codecloseModuleName):
+def _encrypt(content, encryptingKey, codecloseModuleName):
     if not content:
         return content
     
+    contentBytes = content.encode('utf-8')
     initializationVector = Random.get_random_bytes(16)
     cipher = AES.new(encryptingKey, AES.MODE_CBC, iv=initializationVector)
-    encryptedContent = cipher.encrypt(__adaptForAES__(content.encode('utf-8')))
+    encryptedContent = cipher.encrypt(_adaptForAES(contentBytes))
 
-    content = __PROTECTED_SOURCE_TEMPLATE__.format(
+    content = _PROTECTED_SOURCE_TEMPLATE.format(
         encryptedContent="'%s'" % b64encode(encryptedContent).decode('utf-8'),
         initializationVector="'%s'" % b64encode(initializationVector).decode('utf-8'),
-        originalLength=len(content)
+        originalSize=len(contentBytes)
     )
 
-    return __remapModules__(content, codecloseModuleName)
+    return _remapModules(content, codecloseModuleName)
 
-def __generateProbablePrime__(**kwargs):
+def _generateProbablePrime(**kwargs):
     """Modified version of pycryptodome's Cryptodome.Math.Primality.generate_probable_prime to create primes of any size."""
 
     exact_bits = kwargs.pop("exact_bits", None)
@@ -190,7 +213,7 @@ def __generateProbablePrime__(**kwargs):
         result = test_probable_prime(candidate, randfunc)
     return candidate
 
-def __generateRSAKey__(bits, randfunc=None, e=65537):
+def _generateRSAKey(bits, randfunc=None, e=65537):
     """Modified version of pycryptodome's Crypto.RSA.generate to allow keys of any size."""
 
     if e % 2 == 0 or e < 3:
@@ -216,7 +239,7 @@ def __generateRSAKey__(bits, randfunc=None, e=65537):
         def filter_p(candidate):
             return candidate > min_p and (candidate - 1).gcd(e) == 1
 
-        p = __generateProbablePrime__(exact_bits=size_p,
+        p = _generateProbablePrime(exact_bits=size_p,
                                     randfunc=randfunc,
                                     prime_filter=filter_p)
 
@@ -227,7 +250,7 @@ def __generateRSAKey__(bits, randfunc=None, e=65537):
                     (candidate - 1).gcd(e) == 1 and
                     abs(candidate - p) > min_distance)
 
-        q = __generateProbablePrime__(exact_bits=size_q,
+        q = _generateProbablePrime(exact_bits=size_q,
                                     randfunc=randfunc,
                                     prime_filter=filter_q)
 
@@ -242,6 +265,6 @@ def __generateRSAKey__(bits, randfunc=None, e=65537):
 
     return RSA.RsaKey(n=n, e=e, d=d, p=p, q=q, u=u)
 
-def __adaptForAES__(data):
+def _adaptForAES(data):
     dataLength = len(data)
     return data.ljust(dataLength + (16 - dataLength) % 16, b'\0')

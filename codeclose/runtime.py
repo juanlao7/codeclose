@@ -8,8 +8,8 @@ from Cryptodome.Util.number import bytes_to_long
 
 from .errors import InvalidProductKey, InvalidProductId, ExpiredLicense
 
-__settings__ = None
-__license__ = None
+_settings = None
+_license = None
 
 DEFAULT_LICENSE_ID_SIZE = 24
 DEFAULT_PRODUCT_ID_SIZE = 8
@@ -17,26 +17,26 @@ DEFAULT_EXPIRATION_TIME_SIZE = 40
 DEFAULT_HASH_SIZE = 6
 
 def configure(**settings):
-    global __settings__
-    __settings__ = settings
+    global _settings
+    _settings = settings
 
-def expose(encryptedContent, initializationVector, originalLength):
+def expose(encryptedContent, initializationVector, originalSize):
     try:
         license = getLicense()
     except:
         return ''
     
     cipher = AES.new(license['encryptingKey'], AES.MODE_CBC, iv=b64decode(initializationVector))
-    content = cipher.decrypt(b64decode(encryptedContent))
-    return content[:originalLength]
+    contentBytes = cipher.decrypt(b64decode(encryptedContent))
+    return contentBytes[:originalSize].decode('utf-8')
 
 def validate(exitOnException=True):
-    global __settings__
+    global _settings
 
     try:
         license = getLicense()
 
-        if license['productId'] not in __settings__.get('expectedProductIds', []):
+        if license['productId'] not in _settings.get('expectedProductIds', []):
             raise InvalidProductId
 
         if license['currentTime'] > license['expirationTime']:
@@ -48,29 +48,29 @@ def validate(exitOnException=True):
             raise e
 
 def getLicense():
-    global __settings__, __license__
+    global _settings, _license
     
-    if __license__ is None:
-        if 'productKey' not in __settings__:
+    if _license is None:
+        if 'productKey' not in _settings:
             raise InvalidProductKey
         
-        if 'verifyingPublicKey' in __settings__ and 'expectedProductIds' in __settings__ and 'encryptingKey' in __settings__:
+        if 'verifyingPublicKey' in _settings and 'expectedProductIds' in _settings and 'encryptingKey' in _settings:
             # Computing the license locally.
-            verifyingPublicKeyInstance = RSA.import_key(__settings__['verifyingPublicKey'])
-            licenseIdSize = __settings__.get('licenseIdSize', DEFAULT_LICENSE_ID_SIZE)
-            productIdSize = __settings__.get('productIdSize', DEFAULT_PRODUCT_ID_SIZE)
-            expirationTimeSize = __settings__.get('expirationTimeSize', DEFAULT_EXPIRATION_TIME_SIZE)
-            hashSize = __settings__.get('hashSize', DEFAULT_HASH_SIZE)
-            expectedProductIds = __settings__['expectedProductIds']
-            encryptingKeyString = b64encode(__settings__['encryptingKey']).decode('utf-8')
-            __license__ = computeLicense(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, expectedProductIds, encryptingKeyString, __settings__['productKey'])
+            verifyingPublicKeyInstance = RSA.import_key(_settings['verifyingPublicKey'])
+            licenseIdSize = _settings.get('licenseIdSize', DEFAULT_LICENSE_ID_SIZE)
+            productIdSize = _settings.get('productIdSize', DEFAULT_PRODUCT_ID_SIZE)
+            expirationTimeSize = _settings.get('expirationTimeSize', DEFAULT_EXPIRATION_TIME_SIZE)
+            hashSize = _settings.get('hashSize', DEFAULT_HASH_SIZE)
+            expectedProductIds = _settings['expectedProductIds']
+            encryptingKeyString = b64encode(_settings['encryptingKey']).decode('utf-8')
+            _license = computeLicense(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, expectedProductIds, encryptingKeyString, _settings['productKey'])
 
         # TODO: obtain the license from the remote server
 
-        if 'encryptingKey' in __license__:
-            __license__['encryptingKey'] = b64decode(__license__['encryptingKey'].encode('utf-8'))
+        if 'encryptingKey' in _license:
+            _license['encryptingKey'] = b64decode(_license['encryptingKey'].encode('utf-8'))
     
-    return __license__
+    return _license
 
 def computeLicense(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, expectedProductIds, encryptingKeyString, productKey):
     _, productId, expirationTime = readProductKey(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, productKey)

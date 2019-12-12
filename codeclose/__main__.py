@@ -77,7 +77,7 @@ class Commands(object):
             def handler(args):
                 args.encrypting_key_path.write(model.generateEncryptingKey(args.size))
             
-            parser.add_argument('--size', default=model.DEFAULT_AES_KEY_SIZE, type=int, choices=[128, 192, 256], help='Specify the size of the AES key, in bits (128, 192 or 256). %s by default.' % model.DEFAULT_AES_KEY_SIZE)
+            parser.add_argument('--size', default=model.DEFAULT_AES_KEY_SIZE, choices=[128, 192, 256], help='Specify the size of the AES key, in bits (128, 192 or 256). %s by default.' % model.DEFAULT_AES_KEY_SIZE)
             parser.add_argument('encrypting_key_path', type=argparse.FileType('wb'), help='File path where the AES key for encrypting and decrypting source code will be stored.')
             return handler
         
@@ -87,10 +87,26 @@ class Commands(object):
     def protect(cls):
         def preparer(parser):
             def handler(args):
-                model.protect(args.encrypting_key_path.read(), args.dest_directory, args.src, args.encryption_excluded, args.follow_symlinks)
+                if args.src is None:
+                    args.src = []
+
+                if args.encryption_excluded is None:
+                    args.encryption_excluded = []
+                
+                if args.keep_identifier is None:
+                    args.keep_identifier = []
+                
+                if args.keep_attributes is None:
+                    args.keep_attributes = []
+
+                model.protect(args.encrypting_key_path.read(), args.dest_directory, args.src, args.encryption_excluded, args.keep_identifier, args.keep_attributes, args.obfuscation_mode, args.disable_encryption, args.follow_symlinks)
                 
             parser.add_argument('--src', '-s', action='append', type=ReadableDirectory, help='Specify a source directory path. All **/*.py files from this directory will be processed.', metavar='SOURCE_DIR')
             parser.add_argument('--encryption-excluded', '-e', action='append', help='Disable encryption for a specific file, to be able to run it without a valid product key.', metavar='FILE_PATH')
+            parser.add_argument('--keep-identifier', '-k', action='append', help='Disables obfuscation of a specific identifier (e.g. "-k public_method").')
+            parser.add_argument('--keep-attributes', '-a', action='append', help='Disables obfuscation of the attributes of a specific identifier (e.g. "-a sys").')
+            parser.add_argument('--obfuscation-mode', default='normal', choices=['normal', 'light'], help='Obfuscation mode, "normal" (by defalt) or "light" (for debugging purposes).')
+            parser.add_argument('--disable-encryption', action='store_true', help='Disables encryption. It will be possible to run the code without a license.')
             parser.add_argument('--follow-symlinks', action='store_true', help='Follow symbolic links.')
             parser.add_argument('encrypting_key_path', type=argparse.FileType('rb'), help='File containing the AES key for encrypting and decrypting source code.')
             parser.add_argument('dest_directory', type=WritableDirectory, help='Directory path where all processed files will be stored.')
@@ -137,10 +153,12 @@ class Commands(object):
     def computeLicense(cls):
         def preparer(parser):
             def handler(args):
-                expectedProductIds = [] if args.expected_product_id is None else args.expected_product_id
-                configuration = model.configureLicenseComputation(args.public_key_path.read(), args.encrypting_key_path.read(), expectedProductIds, args.license_id_size, args.product_id_size, args.expiration_time_size, args.hash_size)
-                license = model.computeLicense(configuration, args.product_key)
-                print(json.dumps(license))
+                if args.expected_product_id is None:
+                    args.expected_product_id = []
+
+                configuration = model.configureLicenseComputation(args.public_key_path.read(), args.encrypting_key_path.read(), args.expected_product_id, args.license_id_size, args.product_id_size, args.expiration_time_size, args.hash_size)
+                computedLicense = model.computeLicense(configuration, args.product_key)
+                print(json.dumps(computedLicense))
             
             parser.add_argument('--expected-product-id', '-e', action='append', type=UnsignedInt, help='Specify an expected product id.')
             addSizeArguments(parser)
