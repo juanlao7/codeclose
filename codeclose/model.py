@@ -13,7 +13,9 @@ from Cryptodome.Util.number import bytes_to_long, long_to_bytes
 from Cryptodome.Math.Numbers import Integer
 from Cryptodome.Math.Primality import test_probable_prime
 
-from .obfuscation import Analyzer as _Analyzer, Obfuscator as _Obfuscator, MODE_NORMAL as _MODE_NORMAL
+from .obfuscation import Analyzer as _Analyzer, Obfuscator as _Obfuscator
+from .obfuscation import RANDOM_KEYWORDS, LIGHT, NAME_OBFUSCATION_MODES
+
 from .runtime import readProductKey as _readProductKeyImpl, computeLicense as _computeLicenseImpl
 from .runtime import DEFAULT_LICENSE_ID_SIZE, DEFAULT_PRODUCT_ID_SIZE, DEFAULT_EXPIRATION_TIME_SIZE, DEFAULT_HASH_SIZE
 
@@ -38,14 +40,12 @@ def generateEncryptingKey(size=DEFAULT_AES_KEY_SIZE):
 
     return Random.get_random_bytes(size // 8)
 
-def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], encryptionExcludedFilePaths=[], keepIdentifiers=[], keepAttributes=[], obfuscationMode=_MODE_NORMAL, disableEncryption=False, followSymlinks=False):
+def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], encryptionExcludedFilePaths=[], keepIdentifiers=[], keepAttributes=[], nameObfuscation=RANDOM_KEYWORDS, obfuscateStrings=True, disableEncryption=False, followSymlinks=False):
     encryptionExcludedFilePaths = {os.path.abspath(x) for x in encryptionExcludedFilePaths}
     rmtree(destinationDirectoryPath)
 
     while os.path.exists(destinationDirectoryPath):
         pass
-    
-    injectionContent = _getInjectionContent()
 
     # Analyzing the code (for obfuscation).
     analyzer = _Analyzer()
@@ -60,21 +60,24 @@ def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], en
                         content = handler.read()
                         analyzer.analyze(content)
     
+    injectionContent = _getInjectionContent()
+
     for injectedFilePath in injectionContent:
         analyzer.analyze(injectionContent[injectedFilePath])
 
     # Protecting the code.
     os.makedirs(destinationDirectoryPath, exist_ok=True)
     currentPath = os.getcwd()
-    obfuscator = _Obfuscator(analyzer, keepIdentifiers, keepAttributes, obfuscationMode)
+    obfuscator = _Obfuscator(analyzer, keepIdentifiers, keepAttributes, nameObfuscation, obfuscateStrings)
+    injectedCodeclosePackageName = obfuscator.randomName('_codeclose')
 
     for srcPath in sourceDirectoryPaths:
         destPath = os.path.abspath(os.path.join(destinationDirectoryPath, os.path.basename(os.path.abspath(srcPath))))
-        _injectContent(injectionContent, destPath, obfuscator)
+        _injectContent(injectionContent, os.path.join(destPath, injectedCodeclosePackageName), obfuscator)
         os.chdir(srcPath)
 
         for root, _, fileNames in os.walk('.', followlinks=followSymlinks):
-            codecloseModuleName = '.' * len(root.split(os.sep)) + '_codeclose'
+            codecloseModuleName = '.' * len(root.split(os.sep)) + injectedCodeclosePackageName
 
             for fileName in fileNames:
                 if fileName.endswith('.py'):
@@ -89,6 +92,9 @@ def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], en
 
                         if not disableEncryption and all(not os.path.samefile(srcFilePath, excludedFilePath) for excludedFilePath in encryptionExcludedFilePaths):
                             content = _encrypt(content, encryptingKey, codecloseModuleName)
+                            obfuscator.obfuscateStrings = False
+                            content = obfuscator.obfuscate(content)
+                            obfuscator.obfuscateStrings = obfuscateStrings
 
                     with open(destFilePath, 'w', encoding='utf-8') as handler:
                         handler.write(content)
@@ -146,10 +152,10 @@ def computeLicense(configuration, productKey):
     return _computeLicenseImpl(configuration['verifyingPublicKeyInstance'], configuration['licenseIdSize'], configuration['productIdSize'], configuration['expirationTimeSize'], configuration['hashSize'], configuration['expectedProductIds'], configuration['encryptingKeyString'], productKey)
 
 def _getInjectionContent():
-    injectionContent = {os.path.join('_codeclose', '__init__.py'): ' '}
+    injectionContent = {'__init__.py': ' '}
 
     for injectedModuleName in _INJECTED_CODECLOSE_MODULES:
-        injectedFilePath = os.path.join('_codeclose', '%s.py' % injectedModuleName)
+        injectedFilePath = '%s.py' % injectedModuleName
         injectedModule = importlib.import_module('codeclose.%s' % injectedModuleName)
         injectionContent[injectedFilePath] = inspect.getsource(injectedModule)
 

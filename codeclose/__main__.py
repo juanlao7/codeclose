@@ -99,13 +99,14 @@ class Commands(object):
                 if args.keep_attributes is None:
                     args.keep_attributes = []
 
-                model.protect(args.encrypting_key_path.read(), args.dest_directory, args.src, args.encryption_excluded, args.keep_identifier, args.keep_attributes, args.obfuscation_mode, args.disable_encryption, args.follow_symlinks)
+                model.protect(args.encrypting_key_path.read(), args.dest_directory, args.src, args.encryption_excluded, args.keep_identifier, args.keep_attributes, args.name_obfuscation, not args.disable_string_obfuscation, args.disable_encryption, args.follow_symlinks)
                 
             parser.add_argument('--src', '-s', action='append', type=ReadableDirectory, help='Specify a source directory path. All **/*.py files from this directory will be processed.', metavar='SOURCE_DIR')
             parser.add_argument('--encryption-excluded', '-e', action='append', help='Disable encryption for a specific file, to be able to run it without a valid product key.', metavar='FILE_PATH')
             parser.add_argument('--keep-identifier', '-k', action='append', help='Disables obfuscation of a specific identifier (e.g. "-k public_method").')
             parser.add_argument('--keep-attributes', '-a', action='append', help='Disables obfuscation of the attributes of a specific identifier (e.g. "-a sys").')
-            parser.add_argument('--obfuscation-mode', default='normal', choices=['normal', 'light'], help='Obfuscation mode, "normal" (by defalt) or "light" (for debugging purposes).')
+            parser.add_argument('--name-obfuscation', default=model.RANDOM_KEYWORDS, choices=model.NAME_OBFUSCATION_MODES, help='Name obfuscation mode. Possible values: %s. "%s" by default.' % (', '.join(model.NAME_OBFUSCATION_MODES), model.RANDOM_KEYWORDS))
+            parser.add_argument('--disable-string-obfuscation', action='store_true', help='Disable string obfuscation.')
             parser.add_argument('--disable-encryption', action='store_true', help='Disables encryption. It will be possible to run the code without a license.')
             parser.add_argument('--follow-symlinks', action='store_true', help='Follow symbolic links.')
             parser.add_argument('encrypting_key_path', type=argparse.FileType('rb'), help='File containing the AES key for encrypting and decrypting source code.')
@@ -124,7 +125,7 @@ class Commands(object):
             addSizeArguments(parser)
             parser.add_argument('private_key_path', type=argparse.FileType('rb'), help='File containing the RSA private key for creating and signing product keys.')
             parser.add_argument('license_id', type=UnsignedInt, help='An unsigned integer representing the license ID.')
-            parser.add_argument('product_id', type=UnsignedInt, help='An unsigned integer representing the product ID.')
+            parser.add_argument('product_id', type=UnsignedInt, help='An unsigned integer representing the licensed product ID.')
             parser.add_argument('expiration_time', type=UnsignedInt, help='An unsigned integer representing the expiration time of the product key as a Unix timestamp (seconds since Jan 01 1970 UTC).')
             return handler
         

@@ -6,8 +6,9 @@ import builtins
 
 KEYWORDS = dir(builtins) + keyword.kwlist
 
-MODE_NORMAL = 'normal'
-MODE_LIGHT = 'light'
+RANDOM_KEYWORDS = 'randomKeywords'
+LIGHT = 'light'
+NAME_OBFUSCATION_MODES = [RANDOM_KEYWORDS, LIGHT]
 
 class Analyzer(ast.NodeVisitor):
     def __init__(self):
@@ -61,7 +62,8 @@ class Analyzer(ast.NodeVisitor):
             identifier = aliasNode.asname if aliasNode.asname is not None else aliasNode.name
             
             if node.level == 0:
-                # External import.
+                # External import that will be aliased.
+                # We do not include internal imports because we do not change filenames yet.
                 self.externalImportedIdentifiers.add(identifier)
 
     def visit_alias(self, node):
@@ -77,11 +79,12 @@ class Analyzer(ast.NodeVisitor):
             self.definedIdentifiers.add(node.name)
 
 class Obfuscator(ast.NodeTransformer):
-    def __init__(self, analyzer, keepIdentifiers=[], keepAttributes=[], mode=MODE_NORMAL):
+    def __init__(self, analyzer, keepIdentifiers=[], keepAttributes=[], nameObfuscation=RANDOM_KEYWORDS, obfuscateStrings=True):
         self.usedNames = set(KEYWORDS)
         self.randomNameParts = 3 if len(analyzer.definedIdentifiers) > len(KEYWORDS) ** 2 / 2 else 2
-        self.mode = mode
         self.keepIdentifiers = set(keepIdentifiers)
+        self.nameObfuscation = nameObfuscation
+        self.obfuscateStrings = obfuscateStrings
 
         self.identifiersDictionary = self._generateDictionary(analyzer.definedIdentifiers)
         externalImportedIdentifiersDictionary = self._generateDictionary(analyzer.externalImportedIdentifiers)
@@ -107,12 +110,12 @@ class Obfuscator(ast.NodeTransformer):
             if name.startswith('__') and name.endswith('__'):
                 continue
 
-            dictionary[name] = self._randomName(name)
+            dictionary[name] = self.randomName(name)
         
         return dictionary
     
-    def _randomName(self, name):
-        if self.mode == MODE_LIGHT:
+    def randomName(self, name):
+        if self.nameObfuscation == LIGHT:
             obfuscatedName = '%s_%s' % (name, random.randint(9999, 99999))
         else:
             obfuscatedName = '_'.join([random.choice(KEYWORDS).replace('_', '') for i in range(self.randomNameParts)])
@@ -122,7 +125,7 @@ class Obfuscator(ast.NodeTransformer):
         obfuscatedName = '_' * numberOfInitialUnderscores + obfuscatedName + '_' * numberOfFinalUnderscores
         
         if obfuscatedName in self.usedNames:
-            return self._randomName(name)
+            return self.randomName(name)
         
         self.usedNames.add(obfuscatedName)
         return obfuscatedName
@@ -212,7 +215,7 @@ class Obfuscator(ast.NodeTransformer):
     def visit_Str(self, node):
         self.generic_visit(node)
 
-        if not node.s or self.mode == MODE_LIGHT:
+        if not self.obfuscateStrings or not node.s:
             return node
     
         stringBytes = node.s.encode('utf-8')
@@ -226,13 +229,22 @@ class Obfuscator(ast.NodeTransformer):
     
     def visit_ImportFrom(self, node):
         if node.level == 0:
+            # External imports.
             self.generic_visit(node)
             return node
         
+        # Internal imports.
+
         for aliasNode in node.names:
             if aliasNode.name in self.identifiersDictionary:
                 aliasNode.name = self.identifiersDictionary[aliasNode.name]
+            
+            if aliasNode.asname in self.identifiersDictionary:
+                aliasNode.asname = self.identifiersDictionary[aliasNode.asname]
         
+            # If aliasNode.name was not in the identifiersDictionary it means that it is a file name.
+            # In that case we do nothing.
+
         return node
     
     def visit_alias(self, node):
@@ -250,7 +262,7 @@ class Obfuscator(ast.NodeTransformer):
 
         if node.name is None:
             if node.type is not None:
-                node.name = self._randomName('anonymousException')
+                node.name = self.randomName('anonymousException')
         elif node.name in self.identifiersDictionary:
             node.name = self.identifiersDictionary[node.name]
         
