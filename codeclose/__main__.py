@@ -32,8 +32,16 @@ def WritableDirectory(value):
 def UnsignedInt(value):
     value = int(value)
 
-    if value <= 0:
+    if value < 0:
         raise argparse.ArgumentTypeError('Invalid unsigned integer "%s".' % value)
+    
+    return value
+
+def PositiveInt(value):
+    value = int(value)
+
+    if value <= 0:
+        raise argparse.ArgumentTypeError('Invalid positive integer "%s".' % value)
     
     return value
 
@@ -49,10 +57,10 @@ def toHyphenSeparated(value):
     return result
 
 def addSizeArguments(parser):
-    parser.add_argument('--license-id-size', default=model.DEFAULT_LICENSE_ID_SIZE, type=UnsignedInt, help='Specify the size of the license ID field, in bits. {} by default ({:,} possible ids).'.format(model.DEFAULT_LICENSE_ID_SIZE, 2 ** model.DEFAULT_LICENSE_ID_SIZE))
-    parser.add_argument('--product-id-size', default=model.DEFAULT_PRODUCT_ID_SIZE, type=UnsignedInt, help='Specify the size of the product ID field, in bits. {} by default ({:,} possible ids).'.format(model.DEFAULT_PRODUCT_ID_SIZE, 2 ** model.DEFAULT_PRODUCT_ID_SIZE))
-    parser.add_argument('--expiration-time-size', default=model.DEFAULT_EXPIRATION_TIME_SIZE, type=UnsignedInt, help='Specify the size of the expiration time field, in bits. {} by default (maximum expiration date: 36812-02-19 16:53 UTC).'.format(model.DEFAULT_EXPIRATION_TIME_SIZE))     # Too big for datetime.fromtimestamp.
-    parser.add_argument('--hash-size', default=model.DEFAULT_HASH_SIZE, type=UnsignedInt, help='Specify the size of the hash needed for validating the product key, in bytes.')
+    parser.add_argument('--license-id-size', default=model.DEFAULT_LICENSE_ID_SIZE, type=PositiveInt, help='Specify the size of the license ID field, in bits. {} by default ({:,} possible ids).'.format(model.DEFAULT_LICENSE_ID_SIZE, 2 ** model.DEFAULT_LICENSE_ID_SIZE))
+    parser.add_argument('--product-id-size', default=model.DEFAULT_PRODUCT_ID_SIZE, type=PositiveInt, help='Specify the size of the product ID field, in bits. {} by default ({:,} possible ids).'.format(model.DEFAULT_PRODUCT_ID_SIZE, 2 ** model.DEFAULT_PRODUCT_ID_SIZE))
+    parser.add_argument('--expiration-time-size', default=model.DEFAULT_EXPIRATION_TIME_SIZE, type=PositiveInt, help='Specify the size of the expiration time field, in bits. {} by default (maximum expiration date: 36812-02-19 16:53 UTC).'.format(model.DEFAULT_EXPIRATION_TIME_SIZE))     # Too big for datetime.fromtimestamp.
+    parser.add_argument('--hash-size', default=model.DEFAULT_HASH_SIZE, type=PositiveInt, help='Specify the size of the hash needed for validating the product key, in bytes.')
 
 class Commands(object):
     @classmethod
@@ -63,7 +71,7 @@ class Commands(object):
                 args.private_key_path.write(privateKey)
                 args.public_key_path.write(publicKey)
             
-            parser.add_argument('--size', default=model.DEFAULT_RSA_KEY_SIZE, type=UnsignedInt, help='Specify the size of the RSA key, in bits. %s by default.' % model.DEFAULT_RSA_KEY_SIZE)
+            parser.add_argument('--size', default=model.DEFAULT_RSA_KEY_SIZE, type=PositiveInt, help='Specify the size of the RSA key, in bits. %s by default.' % model.DEFAULT_RSA_KEY_SIZE)
             parser.add_argument('--public-exponent', default=model.DEFAULT_RSA_PUBLIC_EXPONENT, type=int, help='Specify the RSA public exponent. %s by default.' % model.DEFAULT_RSA_PUBLIC_EXPONENT)
             parser.add_argument('private_key_path', type=argparse.FileType('wb'), help='File path where the RSA private key for creating and signing product keys will be stored.')
             parser.add_argument('public_key_path', type=argparse.FileType('wb'), help='File path where the RSA public key for reading and verifying product keys will be stored.')
@@ -121,7 +129,7 @@ class Commands(object):
             def handler(args):
                 print(model.createProductKey(args.private_key_path.read(), args.license_id, args.product_id, args.expiration_time, args.groups_length, args.license_id_size, args.product_id_size, args.expiration_time_size, args.hash_size))
 
-            parser.add_argument('--divide', type=UnsignedInt, help='Divide the resulting product key in groups of characters of the given length.', dest='groups_length')
+            parser.add_argument('--divide', type=PositiveInt, help='Divide the resulting product key in groups of characters of the given length.', dest='groups_length')
             addSizeArguments(parser)
             parser.add_argument('private_key_path', type=argparse.FileType('rb'), help='File containing the RSA private key for creating and signing product keys.')
             parser.add_argument('license_id', type=UnsignedInt, help='An unsigned integer representing the license ID.')

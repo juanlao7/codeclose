@@ -7,5 +7,7 @@ class InvalidProductId(Exception):
         super().__init__('Valid product key, but not for this product.')
 
 class ExpiredLicense(Exception):
-    def __init__(self):
+    def __init__(self, expirationTime):
         super().__init__('Expired license.')
+        self.expirationTime = expirationTime
+

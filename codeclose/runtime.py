@@ -37,10 +37,10 @@ def validate(exitOnException=True):
         license = getLicense()
 
         if license['productId'] not in _settings.get('expectedProductIds', []):
-            raise InvalidProductId
+            raise InvalidProductId()
 
         if license['currentTime'] > license['expirationTime']:
-            raise ExpiredLicense
+            raise ExpiredLicense(license['expirationTime'])
     except BaseException as e:
         if exitOnException:
             os._exit(1)     # Without triggering SystemExit exception.

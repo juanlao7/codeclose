@@ -12,6 +12,7 @@ NAME_OBFUSCATION_MODES = [RANDOM_KEYWORDS, LIGHT]
 
 class Analyzer(ast.NodeVisitor):
     def __init__(self):
+        self.identifiers = set()
         self.definedIdentifiers = set()
         self.externalImportedIdentifiers = set()
     
@@ -21,6 +22,7 @@ class Analyzer(ast.NodeVisitor):
 
     def visit_Name(self, node):
         self.generic_visit(node)
+        self.identifiers.add(node.id)
         
         if isinstance(node.ctx, ast.Store):
             self.definedIdentifiers.add(node.id)
@@ -29,30 +31,34 @@ class Analyzer(ast.NodeVisitor):
         self.generic_visit(node)
         
         for name in node.names:
-            self.definedIdentifiers.add(name)
+            self.identifiers.add(name)
         
     def visit_Nonlocal(self, node):
         self.generic_visit(node)
         
         for name in node.names:
-            self.definedIdentifiers.add(name)
+            self.identifiers.add(name)
     
     def visit_Attribute(self, node):
         self.generic_visit(node)
+        self.identifiers.add(node.attr)
         
         if isinstance(node.ctx, ast.Store):
             self.definedIdentifiers.add(node.attr)
 
     def visit_arg(self, node):
         self.generic_visit(node)
+        self.identifiers.add(node.arg)
         self.definedIdentifiers.add(node.arg)
             
     def visit_FunctionDef(self, node):
         self.generic_visit(node)
+        self.identifiers.add(node.name)
         self.definedIdentifiers.add(node.name)
     
     def visit_ClassDef(self, node):
         self.generic_visit(node)
+        self.identifiers.add(node.name)
         self.definedIdentifiers.add(node.name)
     
     def visit_ImportFrom(self, node):
@@ -60,6 +66,7 @@ class Analyzer(ast.NodeVisitor):
 
         for aliasNode in node.names:
             identifier = aliasNode.asname if aliasNode.asname is not None else aliasNode.name
+            self.identifiers.add(identifier)
             
             if node.level == 0:
                 # External import that will be aliased.
@@ -70,17 +77,19 @@ class Analyzer(ast.NodeVisitor):
         # Import without a "from" (so it is an external import).
         self.generic_visit(node)
         identifier = node.asname if node.asname is not None else node.name
+        self.identifiers.add(identifier)
         self.externalImportedIdentifiers.add(identifier)
     
     def visit_ExceptHandler(self, node):
         self.generic_visit(node)
 
         if node.name is not None:
+            self.identifiers.add(node.name)
             self.definedIdentifiers.add(node.name)
 
 class Obfuscator(ast.NodeTransformer):
     def __init__(self, analyzer, keepIdentifiers=[], keepAttributes=[], nameObfuscation=RANDOM_KEYWORDS, obfuscateStrings=True):
-        self.usedNames = set(KEYWORDS)
+        self.usedNames = set(KEYWORDS).union(analyzer.identifiers)
         self.randomNameParts = 3 if len(analyzer.definedIdentifiers) > len(KEYWORDS) ** 2 / 2 else 2
         self.keepIdentifiers = set(keepIdentifiers)
         self.nameObfuscation = nameObfuscation
