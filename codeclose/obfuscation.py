@@ -15,6 +15,7 @@ class Analyzer(ast.NodeVisitor):
         self.identifiers = set()
         self.definedIdentifiers = set()
         self.externalImportedIdentifiers = set()
+        self.keywordArgumentIdentifiers = set()     # We do not obfuscate kwargs because it is common to access them via string.
     
     def analyze(self, content):
         tree = ast.parse(content)
@@ -86,12 +87,15 @@ class Analyzer(ast.NodeVisitor):
         if node.name is not None:
             self.identifiers.add(node.name)
             self.definedIdentifiers.add(node.name)
+    
+    def visit_keyword(self, node):
+        self.keywordArgumentIdentifiers.add(node.arg)
 
 class Obfuscator(ast.NodeTransformer):
     def __init__(self, analyzer, keepIdentifiers=[], keepAttributes=[], nameObfuscation=RANDOM_KEYWORDS, obfuscateStrings=True):
         self.usedNames = set(KEYWORDS).union(analyzer.identifiers)
         self.randomNameParts = 3 if len(analyzer.definedIdentifiers) > len(KEYWORDS) ** 2 / 2 else 2
-        self.keepIdentifiers = set(keepIdentifiers)
+        self.keepIdentifiers = set(keepIdentifiers).union(analyzer.keywordArgumentIdentifiers)
         self.nameObfuscation = nameObfuscation
         self.obfuscateStrings = obfuscateStrings
 
