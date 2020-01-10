@@ -7,7 +7,8 @@ def uninstall():
     subprocess.call('pip uninstall codeclose -y', shell=True)
 
 def install():
-    subprocess.check_call('pip install .', shell=True)
+    uninstall()
+    subprocess.check_call('pip install . --user', shell=True)
 
 def all():
     install()
