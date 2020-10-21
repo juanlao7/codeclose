@@ -1,0 +1,12 @@
+{% capture autotitleWorkspace %}
+    {% if page.no_title %}
+        {% capture autotitle %}{{ site.title }} &#x2014; {{ site.description }}{% endcapture %}
+    {% else %}
+        {% assign nodes = include.html | split: '<h' %}
+        {% assign _workspace = nodes[1] | split: '</h' %}
+        {% capture _hAttrToStrip %}{{ _workspace[0] | split: '>' | first }}>{% endcapture %}
+        {% assign header = _workspace[0] | replace: _hAttrToStrip, '' | strip_html %}
+        {% capture autotitle %}{{ header }} | {{ site.title }} &#x2014; {{ site.description }}{% endcapture %}
+    {% endif %}
+{% endcapture %}{% assign autotitleWorkspace = '' %}
+<title>{{ autotitle }}</title>

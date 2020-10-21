@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: "en-US" }}">
+  <head>
+    <base href="/protopipe_web/" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?nocache=true">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png?nocache=true">
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png?nocache=true">
+    <link rel="manifest" href="./site.webmanifest?nocache=true">
+    <link rel="mask-icon" href="./safari-pinned-tab.svg?nocache=true" color="#537abd">
+    <link rel="shortcut icon" href="./favicon.ico?nocache=true">
+    <meta name="msapplication-TileColor" content="#2b5797">
+    <meta name="theme-color" content="#537abd">
+
+    {% include autotitle.html html=content %}
+
+    {% seo title=false %}
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700&display=swap" />
+    <link rel="stylesheet" href="{{ 'assets/fontello/css/fontello.css?v=' | append: site.github.build_revision | relative_url }}" />
+    <link rel="stylesheet" href="{{ 'assets/css/protopipe_style.css?v=' | append: site.github.build_revision | relative_url }}" />
+  </head>
+
+  <body>
+    <header class="page-header" role="banner">
+      <div id="backgroundImage"></div>
+
+      <div class="adjusted">
+        <h1 class="project-name">{{ site.title }}</h1>
+        <h2 class="project-tagline">{{ page.description | default: site.description | default: site.github.project_tagline }}</h2>
+
+        <nav>
+          <a href=""><i class="icon-home"></i> Home</a>
+          <a href="download"><i class="icon-download"></i> Download</a>
+          <a href="documentation"><i class="icon-book"></i> Documentation</a>
+          <a href="contact"><i class="icon-mail"></i> Contact us</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="content" class="adjusted" role="main">
+      {% assign baseURL = '.' | append: page.url %}
+
+      {% if page.no_toc %}
+      {% else %}
+        <div id="toc">{% include toc.html html=content h_min=3 baseurl=baseURL %}</div>
+      {% endif %}
+
+      {{ content }}
+    </main>
+
+    <footer>
+      <div class="adjusted">
+        <a id="companyLink" href="{{ site.company.url }}">A project by <strong>{{ site.company.name }}</strong></a>
+
+        <div id="copyright">By using this site, you agree to the <a href="terms">Terms of Use</a> and <a href="privacy">Privacy Policy</a>. Protopipe® is a registered trademark of {{ site.company.name }}.</div>
+
+        <div id="legalLinks">
+          <a href="terms">Terms of Use</a>
+          <a href="privacy">Privacy Policy</a>
+          <a href="eula">EULA</a>
+          <a href="contact">Contact us</a>
+        </div>
+      </div>
+    </footer>
+
+    <script type="text/javascript">
+      var toc = document.getElementById('toc');
+
+      if (toc) {
+        toc.parentNode.insertBefore(toc, document.getElementsByTagName('h3')[0]);
+      }
+
+      var imgs = document.getElementsByTagName('img');
+
+      for (var i = 0; i < imgs.length; ++i) {
+        var img = imgs[i];
+
+        if (img.classList.contains('hardcoded')) {
+          continue;
+        }
+
+        var container = document.createElement('div');
+        container.className = 'img';
+        var link = document.createElement('a');
+        link.setAttribute('href', img.src);
+        link.setAttribute('target', '_blank');
+        var style = img.getAttribute('style');
+
+        if (style != null) {
+          container.setAttribute('style', style);
+        }
+
+        if (!img.classList.contains('originalSize')) {
+          img.setAttribute('srcset', img.src + ' 2x');
+          img.removeAttribute('src');
+        }
+
+        img.removeAttribute('style');
+        img.parentNode.replaceChild(container, img);
+        link.appendChild(img);
+        container.appendChild(link);
+      }
+
+      var links = document.getElementsByTagName('a');
+      var myPath = window.location.href.split('#')[0];
+
+      for (var i = 0; i < links.length; ++i) {
+        var href = links[i].getAttribute('href');
+
+        if (href.charAt(0) == '#') {
+          links[i].setAttribute('href', myPath + href);
+        }
+      }
+    </script>
+
+    {% if site.google_analytics %}
+    <script type="text/javascript" src="assets/js/fp.js"></script>
+
+    <script type="text/javascript">
+      function insertAnalytics() {
+        Fingerprint2.get({}, function (components) {
+          var values = components.map(function (component) {
+            return component.value;
+          });
+
+          var murmur = Fingerprint2.x64hash128(values.join(''), 31);
+          // TODO: insert google analytics code.
+        });
+      }
+
+      window.addEventListener('load', function () {
+        if (window.requestIdleCallback) {
+          requestIdleCallback(insertAnalytics);
+        }
+        else {
+          setTimeout(insertAnalytics, 500);
+        }
+      });
+    </script>
+    {% endif %}
+  </body>
+</html>

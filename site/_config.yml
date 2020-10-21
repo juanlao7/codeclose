@@ -1,0 +1,16 @@
+theme: jekyll-theme-cayman
+title: Codeclose
+description: Speed up your machine learning workflows
+baseurl: /codeclose
+permalink: /404.html
+name: Codeclose website
+
+company:
+  name: Juan Lao Tebar
+  email: juanlaotebar`.and.more`{:.antispam}@gmail.com
+  url: https://www.linkedin.com/in/juan-lao/
+
+github:
+  is_project_page: false
+
+exclude: ["_*"]
