@@ -2,7 +2,7 @@
 
 A license system and code obfuscator for Python.
 
-Codeclose obfuscates source code to make it unreadable for humans and also encrypts it to make it unreadable for machines. The code can be run only if the user has a personal product key, provided by you.
+Codeclose obfuscates source code to make it unreadable for humans and encrypts it to make it unreadable for machines. The resulting code can only be run if the user has a valid product key, provided by the developer.
 
 ## Example
 

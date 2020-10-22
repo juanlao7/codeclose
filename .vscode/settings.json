@@ -3,5 +3,6 @@
 	"files.exclude": {
         "**/*.bak": true,
         "**/*.pyc": true
-    }
+    },
+    "python.languageServer": "Jedi"
 }

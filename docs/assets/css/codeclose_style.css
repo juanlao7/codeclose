@@ -91,7 +91,7 @@ h3,
 h4,
 h5,
 h6 {
-    color: #537abd;
+    color: #bd6d53;
     margin-top: 2rem;
     margin-bottom: 1rem;
 }
@@ -223,11 +223,12 @@ code {
 
 #backgroundImage {
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    top: -200%;
+    bottom: -200%;
+    left: -200%;
+    right: -200%;
     background: url('../img/background.svg') -50px -50px;
+    transform: rotate(-45deg);
 }
 
 #content {
@@ -239,7 +240,8 @@ code {
     min-height: 500px;
 }
 
-#content p {
+#content p,
+#content .hljs {
     margin-bottom: 1em;
 }
 
@@ -268,7 +270,7 @@ code {
 
 #toc::before {
     content: 'Table of contents';
-    color: #537abd;
+    color: #bd6d53;
     margin-top: 2rem;
     margin-bottom: 1rem;
     font-weight: normal;

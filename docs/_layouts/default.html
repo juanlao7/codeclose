@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ site.lang | default: "en-US" }}">
   <head>
-    <base href="/protopipe_web/" />
+    <base href="/codeclose/" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -20,7 +20,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700&display=swap" />
     <link rel="stylesheet" href="{{ 'assets/fontello/css/fontello.css?v=' | append: site.github.build_revision | relative_url }}" />
-    <link rel="stylesheet" href="{{ 'assets/css/protopipe_style.css?v=' | append: site.github.build_revision | relative_url }}" />
+    <link rel="stylesheet" href="{{ 'assets/css/codeclose_style.css?v=' | append: site.github.build_revision | relative_url }}" />
+
+    <!-- Highlight code -->
+    <link rel="stylesheet" href="assets/highlight/styles/monokai-sublime.css" />
+    <script src="assets/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
   </head>
 
   <body>
@@ -55,12 +60,11 @@
       <div class="adjusted">
         <a id="companyLink" href="{{ site.company.url }}">A project by <strong>{{ site.company.name }}</strong></a>
 
-        <div id="copyright">By using this site, you agree to the <a href="terms">Terms of Use</a> and <a href="privacy">Privacy Policy</a>. Protopipe® is a registered trademark of {{ site.company.name }}.</div>
+        <div id="copyright">By using this site, you agree to the <a href="terms">Terms of Use</a> and <a href="privacy">Privacy Policy</a>.</div>
 
         <div id="legalLinks">
           <a href="terms">Terms of Use</a>
           <a href="privacy">Privacy Policy</a>
-          <a href="eula">EULA</a>
           <a href="contact">Contact us</a>
         </div>
       </div>

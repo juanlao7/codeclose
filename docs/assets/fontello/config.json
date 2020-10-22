@@ -15,19 +15,19 @@
     {
       "uid": "ae3so8q0b0n2h8esv9flua2nmwswa8fd",
       "css": "mail",
-      "code": 59395,
+      "code": 59393,
       "src": "modernpics"
     },
     {
       "uid": "48b79f27e4798f23bafa07b55dbe5b73",
       "css": "book",
-      "code": 59393,
+      "code": 59394,
       "src": "entypo"
     },
     {
       "uid": "b08cfe8039de2ce815686aced2caef06",
       "css": "download",
-      "code": 59394,
+      "code": 59395,
       "src": "entypo"
     },
     {
@@ -88,6 +88,12 @@
       "uid": "e9fa538fd5913046497ac148e27cd8ea",
       "css": "apple",
       "code": 61817,
+      "src": "fontawesome"
+    },
+    {
+      "uid": "0f6a2573a7b6df911ed199bb63717e27",
+      "css": "github-circled",
+      "code": 61595,
       "src": "fontawesome"
     }
   ]
