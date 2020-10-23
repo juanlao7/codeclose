@@ -74,7 +74,7 @@ Read [the documentation](documentation) to learn how to use Codeclose.
 
 Codeclose obfuscates source code to make it unreadable for humans and encrypts it to make it unreadable for machines.
 
-Customers can only decrypt and run the code with a valid product key, provided by you.
+Your customers can only decrypt and run the code with a valid product key, provided by you.
 
 <div class="label">Original source code</div>
 ```python
