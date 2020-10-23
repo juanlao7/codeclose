@@ -47,7 +47,7 @@ no_title: true
 
 <p id="bigTitle">A license system and code obfuscator for Python.</p>
 
-## Integrated in your product
+## Integrated license validation
 
 Users will need a valid product key to use your application or service.
 
