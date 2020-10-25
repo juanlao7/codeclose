@@ -2,7 +2,7 @@
 
 ## A license system and code obfuscator for Python
 
-This is the main repository of Codeclose, and this document contains instructions for its maintainers.
+This is the main repository of Codeclose, and this document is intended to its maintainers.
 
 If you want to **use** Codeclose, you will find more information in its [official website](https://juanlao7.github.io/codeclose/).
 
