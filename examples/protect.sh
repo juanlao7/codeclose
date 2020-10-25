@@ -1,2 +1,4 @@
 #!/bin/sh
-codeclose protect -s $1 -e $1/__main__.py keys/code_encrypting.key protected_$1 -k args -a args
+codeclose protect --src $1 --encryption-excluded $1/__main__.py --encryption-excluded $1/__init__.py keys/code_encrypting.key protected --keep-identifier args --keep-attributes args
+cp keys/code_encrypting.key protected/$1
+cp keys/pk_verifying-public.pem protected/$1

@@ -60,7 +60,7 @@ def addSizeArguments(parser):
     parser.add_argument('--license-id-size', default=model.DEFAULT_LICENSE_ID_SIZE, type=PositiveInt, help='Specify the size of the license ID field, in bits. {} by default ({:,} possible ids).'.format(model.DEFAULT_LICENSE_ID_SIZE, 2 ** model.DEFAULT_LICENSE_ID_SIZE))
     parser.add_argument('--product-id-size', default=model.DEFAULT_PRODUCT_ID_SIZE, type=PositiveInt, help='Specify the size of the product ID field, in bits. {} by default ({:,} possible ids).'.format(model.DEFAULT_PRODUCT_ID_SIZE, 2 ** model.DEFAULT_PRODUCT_ID_SIZE))
     parser.add_argument('--expiration-time-size', default=model.DEFAULT_EXPIRATION_TIME_SIZE, type=PositiveInt, help='Specify the size of the expiration time field, in bits. {} by default (maximum expiration date: 36812-02-19 16:53 UTC).'.format(model.DEFAULT_EXPIRATION_TIME_SIZE))     # Too big for datetime.fromtimestamp.
-    parser.add_argument('--hash-size', default=model.DEFAULT_HASH_SIZE, type=PositiveInt, help='Specify the size of the hash needed for validating the product key, in bytes.')
+    parser.add_argument('--hash-size', default=model.DEFAULT_HASH_SIZE, type=PositiveInt, help='Specify the size of the hash needed for validating the product key, in bytes. %s by default.' % model.DEFAULT_HASH_SIZE)
 
 class Commands(object):
     @classmethod
@@ -111,8 +111,8 @@ class Commands(object):
                 
             parser.add_argument('--src', '-s', action='append', type=ReadableDirectory, help='Specify a source directory path. All **/*.py files from this directory will be processed.', metavar='SOURCE_DIR')
             parser.add_argument('--encryption-excluded', '-e', action='append', help='Disable encryption for a specific file, to be able to run it without a valid product key.', metavar='FILE_PATH')
-            parser.add_argument('--keep-identifier', '-k', action='append', help='Disables obfuscation of a specific identifier (e.g. "-k public_method").')
-            parser.add_argument('--keep-attributes', '-a', action='append', help='Disables obfuscation of the attributes of a specific identifier (e.g. "-a sys").')
+            parser.add_argument('--keep-identifier', '-k', action='append', help='Disables obfuscation of a specific identifier (e.g., "-k public_method").')
+            parser.add_argument('--keep-attributes', '-a', action='append', help='Disables obfuscation of the attributes of a specific identifier (e.g., "-a sys").')
             parser.add_argument('--name-obfuscation', default=model.RANDOM_KEYWORDS, choices=model.NAME_OBFUSCATION_MODES, help='Name obfuscation mode. Possible values: %s. "%s" by default.' % (', '.join(model.NAME_OBFUSCATION_MODES), model.RANDOM_KEYWORDS))
             parser.add_argument('--disable-string-obfuscation', action='store_true', help='Disable string obfuscation.')
             parser.add_argument('--disable-encryption', action='store_true', help='Disables encryption. It will be possible to run the code without a license.')

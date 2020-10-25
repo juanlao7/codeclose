@@ -221,6 +221,10 @@ code {
     user-select: none;
 }
 
+.nowrap {
+    white-space: nowrap;
+}
+
 #backgroundImage {
     position: absolute;
     top: -200%;

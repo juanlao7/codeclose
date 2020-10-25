@@ -41,6 +41,8 @@ def validate(exitOnException=True):
 
         if license['currentTime'] > license['expirationTime']:
             raise ExpiredLicense(license['expirationTime'])
+        
+        return license
     except BaseException as e:
         if exitOnException:
             os._exit(1)     # Without triggering SystemExit exception.
