@@ -8,8 +8,10 @@ If you want to **use** Codeclose, you will find more information in its [officia
 
 ## Under construction
 
-This project was born as the license system of [Protopipe](https://juanlao7.github.io/protopipe_web/) but then I thought that it may help someone else, so I decided to separate it into another repository and publish it as an open source tool under the MIT License.
+Codeclose was born as an internal license system for [Protopipe](https://juanlao7.github.io/protopipe_web/). However, since it may help someone else, I decided to separate it into another repository and publish it as an open source tool under the MIT License.
 
-In the commit history of this repository you will find weird commit messages, because they originally belonged to Protopipe's repository. You will also find that there are no tests, and the reason is that I invested most of my time developing a suite for testing the obfuscated \& encrypted version of Protopipe. If made the assumption that if Protopipe worked fine, then Codeclose works too.
+I am not actively working on this project, but if you find any bug or you have any feature request, I will surely find time to fix or implement it. Feel free to use [the issue tracker](https://github.com/juanlao7/codeclose/issues) or [contact me](https://juanlao7.github.io/codeclose/contact).
 
-I am currently not developing this project, but if you find any bug or you have a feature request, I will probably find time to fix or implement it. Feel free to use [the issue tracker](https://github.com/juanlao7/codeclose/issues) or [contact me](https://juanlao7.github.io/codeclose/contact).
+In the commit history of this repository you will find strange commit messages that talk about things not related to this repository. The reason is that those commits originally belonged to Protopipe's repository and contained more changes.
+
+You will also find weird that this project has no tests. The reason is that I invested most of my time developing a suite for testing the obfuscated \& encrypted code of Protopipe. I made the assumption that, if Protopipe works fine, then Codeclose works too.
