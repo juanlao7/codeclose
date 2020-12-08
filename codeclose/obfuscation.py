@@ -224,7 +224,15 @@ class Obfuscator(ast.NodeTransformer):
             node.name = self.identifiersDictionary[node.name]
         
         return node
+    
+    def visit_JoinedStr(self, node):
+        # We can't obfuscate f-strings, so we skip the first child but obfuscate the rest.
+
+        for child in node.values[1:]:
+            self.generic_visit(child)
         
+        return node
+    
     def visit_Str(self, node):
         self.generic_visit(node)
 
