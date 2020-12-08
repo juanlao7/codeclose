@@ -90,11 +90,22 @@ def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], en
                         content = _remapModules(content, codecloseModuleName)
                         content = obfuscator.obfuscate(content)
 
-                        if not disableEncryption and all(not os.path.samefile(srcFilePath, excludedFilePath) for excludedFilePath in encryptionExcludedFilePaths):
-                            content = _encrypt(content, encryptingKey, codecloseModuleName)
-                            obfuscator.obfuscateStrings = False
-                            content = obfuscator.obfuscate(content)
-                            obfuscator.obfuscateStrings = obfuscateStrings
+                        if not disableEncryption:
+                            isExcluded = False
+
+                            for excludedFilePath in encryptionExcludedFilePaths:
+                                try:
+                                    if os.path.samefile(srcFilePath, excludedFilePath):
+                                        isExcluded = True
+                                        break
+                                except FileNotFoundError:
+                                    pass
+
+                            if not isExcluded:
+                                content = _encrypt(content, encryptingKey, codecloseModuleName)
+                                obfuscator.obfuscateStrings = False
+                                content = obfuscator.obfuscate(content)
+                                obfuscator.obfuscateStrings = obfuscateStrings
 
                     with open(destFilePath, 'w', encoding='utf-8') as handler:
                         handler.write(content)

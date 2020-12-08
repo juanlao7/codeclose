@@ -72,7 +72,9 @@ class Analyzer(ast.NodeVisitor):
             if node.level == 0:
                 # External import that will be aliased.
                 # We do not include internal imports because we do not change filenames yet.
-                self.externalImportedIdentifiers.add(identifier)
+
+                if identifier != '*':
+                    self.externalImportedIdentifiers.add(identifier)
 
     def visit_alias(self, node):
         # Import without a "from" (so it is an external import).
@@ -269,7 +271,7 @@ class Obfuscator(ast.NodeTransformer):
         return node
     
     def visit_alias(self, node):
-        # Import without a "from" (so it is an external import).
+        # Import without a "from" (so it is ALWAYS an external import).
         self.generic_visit(node)
         identifier = node.asname if node.asname is not None else node.name
         
