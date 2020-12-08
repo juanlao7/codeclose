@@ -79,6 +79,14 @@ class Analyzer(ast.NodeVisitor):
     def visit_alias(self, node):
         # Import without a "from" (so it is an external import).
         self.generic_visit(node)
+
+        if node.asname is None and '.' in node.name:
+            # (e.g., "import http.client")
+            # In this case we should not obfuscate it, because that will enter in conflict with other files that
+            # import the entire parent module and use the same submodule. If we give an obfuscated alias to this
+            # submodule, it will be replaced in the other file too, but the alias will be undefined there.
+            return
+
         identifier = node.asname if node.asname is not None else node.name
         self.identifiers.add(identifier)
         self.externalImportedIdentifiers.add(identifier)
