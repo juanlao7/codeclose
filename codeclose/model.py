@@ -40,7 +40,8 @@ def generateEncryptingKey(size=DEFAULT_AES_KEY_SIZE):
 
     return Random.get_random_bytes(size // 8)
 
-def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], encryptionExcludedFilePaths=[], keepIdentifiers=[], keepAttributes=[], nameObfuscation=RANDOM_KEYWORDS, obfuscateStrings=True, disableEncryption=False, followSymlinks=False):
+def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], obfuscationExcludedFilePaths=[], encryptionExcludedFilePaths=[], keepIdentifiers=[], keepAttributes=[], nameObfuscation=RANDOM_KEYWORDS, obfuscateStrings=True, disableEncryption=False, followSymlinks=False):
+    obfuscationExcludedFilePaths = {os.path.abspath(x) for x in obfuscationExcludedFilePaths}
     encryptionExcludedFilePaths = {os.path.abspath(x) for x in encryptionExcludedFilePaths}
     rmtree(destinationDirectoryPath)
 
@@ -56,9 +57,10 @@ def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], en
                 if fileName.endswith('.py'):
                     srcFilePath = os.path.join(root, fileName)
                     
-                    with open(srcFilePath, 'r', encoding='utf-8') as handler:
-                        content = handler.read()
-                        analyzer.analyze(content)
+                    if not _filePathIsExcluded(srcFilePath, obfuscationExcludedFilePaths):
+                        with open(srcFilePath, 'r', encoding='utf-8') as handler:
+                            content = handler.read()
+                            analyzer.analyze(content)
     
     injectionContent = _getInjectionContent()
 
@@ -90,22 +92,11 @@ def protect(encryptingKey, destinationDirectoryPath, sourceDirectoryPaths=[], en
                         content = _remapModules(content, codecloseModuleName)
                         content = obfuscator.obfuscate(content)
 
-                        if not disableEncryption:
-                            isExcluded = False
-
-                            for excludedFilePath in encryptionExcludedFilePaths:
-                                try:
-                                    if os.path.samefile(srcFilePath, excludedFilePath):
-                                        isExcluded = True
-                                        break
-                                except FileNotFoundError:
-                                    pass
-
-                            if not isExcluded:
-                                content = _encrypt(content, encryptingKey, codecloseModuleName)
-                                obfuscator.obfuscateStrings = False
-                                content = obfuscator.obfuscate(content)
-                                obfuscator.obfuscateStrings = obfuscateStrings
+                        if not disableEncryption and not _filePathIsExcluded(srcFilePath, encryptionExcludedFilePaths):
+                            content = _encrypt(content, encryptingKey, codecloseModuleName)
+                            obfuscator.obfuscateStrings = False
+                            content = obfuscator.obfuscate(content)
+                            obfuscator.obfuscateStrings = obfuscateStrings
 
                     with open(destFilePath, 'w', encoding='utf-8') as handler:
                         handler.write(content)
@@ -285,3 +276,13 @@ def _generateRSAKey(bits, randfunc=None, e=65537):
 def _adaptForAES(data):
     dataLength = len(data)
     return data.ljust(dataLength + (16 - dataLength) % 16, b'\0')
+
+def _filePathIsExcluded(filePath, listOfExcludedFilePaths):
+    for excludedFilePath in listOfExcludedFilePaths:
+        try:
+            if os.path.samefile(filePath, excludedFilePath):
+                return True
+        except FileNotFoundError:
+            pass
+
+    return False

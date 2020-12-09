@@ -97,6 +97,9 @@ class Commands(object):
             def handler(args):
                 if args.src is None:
                     args.src = []
+                
+                if args.obfuscation_excluded is None:
+                    args.obfuscation_excluded = []
 
                 if args.encryption_excluded is None:
                     args.encryption_excluded = []
@@ -107,9 +110,10 @@ class Commands(object):
                 if args.keep_attributes is None:
                     args.keep_attributes = []
 
-                model.protect(args.encrypting_key_path.read(), args.dest_directory, args.src, args.encryption_excluded, args.keep_identifier, args.keep_attributes, args.name_obfuscation, not args.disable_string_obfuscation, args.disable_encryption, args.follow_symlinks)
+                model.protect(args.encrypting_key_path.read(), args.dest_directory, args.src, args.obfuscation_excluded, args.encryption_excluded, args.keep_identifier, args.keep_attributes, args.name_obfuscation, not args.disable_string_obfuscation, args.disable_encryption, args.follow_symlinks)
                 
             parser.add_argument('--src', '-s', action='append', type=ReadableDirectory, help='Specify a source directory path. All **/*.py files from this directory will be processed.', metavar='SOURCE_DIR')
+            parser.add_argument('--obfuscation-excluded', '-x', action='append', help='Disable obfuscation for the identifiers defined exclusively at a specific file.', metavar='FILE_PATH')
             parser.add_argument('--encryption-excluded', '-e', action='append', help='Disable encryption for a specific file, to be able to run it without a valid product key.', metavar='FILE_PATH')
             parser.add_argument('--keep-identifier', '-k', action='append', help='Disables obfuscation of a specific identifier (e.g., "-k public_method").')
             parser.add_argument('--keep-attributes', '-a', action='append', help='Disables obfuscation of the attributes of a specific identifier (e.g., "-a sys").')
