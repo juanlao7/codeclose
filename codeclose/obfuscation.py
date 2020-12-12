@@ -195,15 +195,22 @@ class Obfuscator(ast.NodeTransformer):
         originalIdentifier = node.value
 
         while not isinstance(originalIdentifier, ast.Name):
-            if isinstance(originalIdentifier, ast.Attribute) or isinstance(originalIdentifier, ast.Subscript):
+            isAttribute = isinstance(originalIdentifier, ast.Attribute)
+
+            if isAttribute and originalIdentifier.attr in self.keepAttributes:
+                # Keeping attributes in "a.KEEP_THESE_ATTRIBUTES.x"
+                return node
+                
+            if isAttribute or isinstance(originalIdentifier, ast.Subscript):
                 originalIdentifier = originalIdentifier.value
             elif isinstance(originalIdentifier, ast.Call):
                 originalIdentifier = originalIdentifier.func
             else:
-                originalIdentifier = None
-                break
-
-        if originalIdentifier is None or originalIdentifier.id in self.keepAttributes:
+                # Unknown case, keeping attributes.
+                return node
+        
+        if originalIdentifier.id in self.keepAttributes:
+            # Keeping attributes in "KEEP_THESE_ATTRIBUTES.x"
             return node
         
         if node.attr in self.identifiersDictionary:
