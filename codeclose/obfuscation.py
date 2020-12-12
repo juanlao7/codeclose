@@ -209,8 +209,8 @@ class Obfuscator(ast.NodeTransformer):
                 # Unknown case, keeping attributes.
                 return node
         
-        if originalIdentifier.id in self.keepAttributes:
-            # Keeping attributes in "KEEP_THESE_ATTRIBUTES.x"
+        if originalIdentifier is None or originalIdentifier.id in self.keepAttributes:
+            # Keeping attributes in unknown cases and in "KEEP_THESE_ATTRIBUTES.x"
             return node
         
         if node.attr in self.identifiersDictionary:
