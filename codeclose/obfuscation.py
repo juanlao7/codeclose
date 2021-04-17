@@ -4,11 +4,27 @@ import random
 import keyword
 import builtins
 
+from six.moves import cStringIO
+
 KEYWORDS = dir(builtins) + keyword.kwlist
 
 RANDOM_KEYWORDS = 'randomKeywords'
 LIGHT = 'light'
 NAME_OBFUSCATION_MODES = [RANDOM_KEYWORDS, LIGHT]
+
+# Fix for https://github.com/simonpercivall/astunparse/issues/43
+class FixedAstunparseUnparser(astunparse.Unparser):
+    def _Constant(self, t):
+        if not hasattr(t, 'kind'):
+            setattr(t, 'kind', None)
+        
+        super()._Constant(t)
+
+# Fix for https://github.com/simonpercivall/astunparse/issues/43
+def fixedAstunparseUnparse(tree):
+    v = cStringIO()
+    FixedAstunparseUnparser(tree, file=v)
+    return v.getvalue()
 
 class Analyzer(ast.NodeVisitor):
     def __init__(self):
@@ -119,7 +135,7 @@ class Obfuscator(ast.NodeTransformer):
         tree = ast.parse(content)
         self.visit(tree)
         ast.fix_missing_locations(tree)
-        obfuscatedContent = astunparse.unparse(tree)
+        obfuscatedContent = fixedAstunparseUnparse(tree)
         obfuscatedContent = obfuscatedContent.replace('\r', '').replace('\n\n', '\n').replace('    ', ' ')
         return obfuscatedContent
     
