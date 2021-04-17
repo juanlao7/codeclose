@@ -151,7 +151,7 @@ def configureLicenseComputation(verifyingPublicKey, encryptingKey, expectedProdu
     }
 
 def computeLicense(configuration, productKey):
-    return _computeLicenseImpl(configuration['verifyingPublicKeyInstance'], configuration['licenseIdSize'], configuration['productIdSize'], configuration['expirationTimeSize'], configuration['hashSize'], configuration['expectedProductIds'], configuration['encryptingKeyString'], productKey)
+    return _computeLicenseImpl(productKey, configuration['verifyingPublicKeyInstance'], configuration['encryptingKeyString'], configuration['expectedProductIds'], configuration['licenseIdSize'], configuration['productIdSize'], configuration['expirationTimeSize'], configuration['hashSize'])
 
 def _getInjectionContent():
     injectionContent = {'__init__.py': ' '}

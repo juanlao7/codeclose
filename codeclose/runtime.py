@@ -8,7 +8,6 @@ from Cryptodome.Util.number import bytes_to_long
 
 from .errors import InvalidProductKey, InvalidProductId, ExpiredLicense
 
-_settings = None
 _license = None
 
 DEFAULT_LICENSE_ID_SIZE = 24
@@ -16,9 +15,16 @@ DEFAULT_PRODUCT_ID_SIZE = 8
 DEFAULT_EXPIRATION_TIME_SIZE = 40
 DEFAULT_HASH_SIZE = 6
 
-def configure(**settings):
-    global _settings
-    _settings = settings
+def configure(productKey=None, verifyingPublicKey=None, encryptingKey=None, expectedProductIds=None, licenseIdSize=DEFAULT_LICENSE_ID_SIZE, productIdSize=DEFAULT_PRODUCT_ID_SIZE, expirationTimeSize=DEFAULT_EXPIRATION_TIME_SIZE, hashSize=DEFAULT_HASH_SIZE):
+    global _productKey, _verifyingPublicKey, _encryptingKey, _expectedProductIds, _licenseIdSize, _productIdSize, _expirationTimeSize, _hashSize
+    _productKey = productKey
+    _verifyingPublicKey = verifyingPublicKey
+    _encryptingKey = encryptingKey
+    _expectedProductIds = expectedProductIds
+    _licenseIdSize = licenseIdSize
+    _productIdSize = productIdSize
+    _expirationTimeSize = expirationTimeSize
+    _hashSize = hashSize
 
 def expose(encryptedContent, initializationVector, originalSize):
     try:
@@ -31,12 +37,12 @@ def expose(encryptedContent, initializationVector, originalSize):
     return contentBytes[:originalSize].decode('utf-8')
 
 def validate(exitOnException=True):
-    global _settings
+    global _expectedProductIds
 
     try:
         license = getLicense()
 
-        if license['productId'] not in _settings.get('expectedProductIds', []):
+        if _expectedProductIds is None or license['productId'] not in _expectedProductIds:
             raise InvalidProductId()
 
         if license['currentTime'] > license['expirationTime']:
@@ -50,22 +56,17 @@ def validate(exitOnException=True):
             raise e
 
 def getLicense():
-    global _settings, _license
+    global _license, _productKey
     
     if _license is None:
-        if 'productKey' not in _settings:
+        if _productKey is None:
             raise InvalidProductKey
         
-        if 'verifyingPublicKey' in _settings and 'expectedProductIds' in _settings and 'encryptingKey' in _settings:
+        if _verifyingPublicKey is not None and _expectedProductIds is not None and _encryptingKey is not None:
             # Computing the license locally.
-            verifyingPublicKeyInstance = RSA.import_key(_settings['verifyingPublicKey'])
-            licenseIdSize = _settings.get('licenseIdSize', DEFAULT_LICENSE_ID_SIZE)
-            productIdSize = _settings.get('productIdSize', DEFAULT_PRODUCT_ID_SIZE)
-            expirationTimeSize = _settings.get('expirationTimeSize', DEFAULT_EXPIRATION_TIME_SIZE)
-            hashSize = _settings.get('hashSize', DEFAULT_HASH_SIZE)
-            expectedProductIds = _settings['expectedProductIds']
-            encryptingKeyString = b64encode(_settings['encryptingKey']).decode('utf-8')
-            _license = computeLicense(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, expectedProductIds, encryptingKeyString, _settings['productKey'])
+            verifyingPublicKeyInstance = RSA.import_key(_verifyingPublicKey)
+            encryptingKeyString = b64encode(_encryptingKey).decode('utf-8')
+            _license = computeLicense(_productKey, verifyingPublicKeyInstance, encryptingKeyString, _expectedProductIds, _licenseIdSize, _productIdSize, _expirationTimeSize, _hashSize)
 
         # TODO: obtain the license from the remote server
 
@@ -74,7 +75,7 @@ def getLicense():
     
     return _license
 
-def computeLicense(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, expectedProductIds, encryptingKeyString, productKey):
+def computeLicense(productKey, verifyingPublicKeyInstance, encryptingKeyString, expectedProductIds, licenseIdSize, productIdSize, expirationTimeSize, hashSize):
     _, productId, expirationTime = readProductKey(verifyingPublicKeyInstance, licenseIdSize, productIdSize, expirationTimeSize, hashSize, productKey)
 
     license = {

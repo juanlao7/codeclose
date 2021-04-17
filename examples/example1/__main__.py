@@ -30,7 +30,7 @@ handler.close()
 
 # Configuring Codeclose.
 # We will only accept product keys that grant access to the product with ID = 1.
-configure(verifyingPublicKey=verifyingPublicKey, encryptingKey=encryptingKey, expectedProductIds=[1], productKey=args.productKey)
+configure(args.productKey, verifyingPublicKey, encryptingKey, [1])
 
 # Validating the license.
 # If there is any problem, Codeclose will raise an exception. You can then catch it and inform the user.
